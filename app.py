@@ -118,6 +118,8 @@ def invoice_handler():
         data = request.get_json()
         if data["action"] == "invoice":
             invoice = InvoiceHeader.query.filter(InvoiceHeader.id == data["id"]).first()
+            if not invoice:
+                return jsonify({"error":"Invoice with "+ data["id"] +" does not exist"}),400
             if data["date"]:
                 invoice.date = data["date"]
             if data["invoice_number"]:
@@ -134,6 +136,8 @@ def invoice_handler():
         
         if data["action"] == "invoiceItem":
             invoice_item = InvoiceItem.query.filter(InvoiceItem.id == data["id"]).first()
+            if not invoice_item:
+                return jsonify({"error":"Invoice_item with "+ data["id"] +" does not exist"}),400
             if data["quantity"]:
                 invoice_item.quantity = data["quantity"]
             if data["price"]:
@@ -146,8 +150,10 @@ def invoice_handler():
                 invoice_item.amount = data["amount"]
             return jsonify({ "message":"Invoice_item with "+ invoice_item.id + "has been updated"})
         
-        if data["action"] == "invoiceSudry":
+        if data["action"] == "invoiceSundry":
             invoice_sundry = InvoiceBillSundry.query.filter(InvoiceBillSundry.id == data["id"]).first()
+            if not invoice_sundry:
+                return jsonify({"error":"Invoice_sundry with "+ data["id"] +" does not exist"}),400
             if data["bill_sundry_name"]:
                 invoice_sundry.bill_sundry_name = data["bill_sundry_name"]
             if data["price"]:
@@ -158,19 +164,39 @@ def invoice_handler():
         data = request.get_json()
         if data["action"] == "invoiceItem":
             invoice_item = InvoiceItem.query.filter(InvoiceItem.id == data["id"]).first()
+            if not invoice_item:
+                return jsonify({"error":"Invoice_item with "+ data["id"] +" does not exist"}),400
             invoice = InvoiceHeader.query.filter(InvoiceHeader.id == invoice_item.invoice_id).first()
             invoice.total_amount -= invoice_item.amount
             invoice_item.delete()
             db.session.commit()
-
+            return jsonify({ "message":"Invoice_item with "+ invoice_item.id + "has been deleted"})
+        
         if data["action"] == "invoiceSudry":
             invoice_sundry = InvoiceBillSundry.query.filter(InvoiceBillSundry.id == data["id"]).first()
+            if not invoice_sundry:
+                return jsonify({"error":"Invoice_sundry with "+ data["id"] +" does not exist"}),400
             invoice = InvoiceHeader.query.filter(InvoiceHeader.id == invoice_sundry.invoice_id).first()
-            invoice.total_amount -= invoice_item.amount
-            invoice_item.delete()
+            invoice.total_amount -= invoice_sundry.amount
+            invoice_sundry.delete()
             db.session.commit()
-
-
+            return jsonify({ "message":"Invoice_sundry with "+ invoice_sundry.id + "has been deleted"})
+        
+        if data["action"] == "invoice":
+            invoice = InvoiceHeader.query.filter(InvoiceHeader.id == data["id"]).first()
+            if not invoice:
+                return jsonify({"error":"Invoice with "+ data["id"] +" does not exist"}),400
+            invoice_items = InvoiceItem.query.filter(InvoiceItem.invoice_id == invoice.id).all()
+            for item in invoice_items:
+                item.delete()
+            invoice_bill_sundries = InvoiceBillSundry.query.filter(InvoiceBillSundry.invoice_id == invoice.id).all()
+            for sundry in invoice_bill_sundries:
+                sundry.delete()
+            invoice.delete()
+            db.session.commit()
+            return jsonify({ "message":"Invoice with "+ invoice.id + "has been deleted"})
+        
+        return jsonify({"error":"Invalid action"}),400
 
 def main():
     app.run("localhost", debug=True)
